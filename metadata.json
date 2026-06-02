@@ -1,0 +1,6 @@
+{
+  "name": "TCI Cabin Reset Panel",
+  "description": "Interactive avionics cabin crew controller supporting seat-level soft/hard reboots, row smart-box MCU resets, and AMCU full-system power cycles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
