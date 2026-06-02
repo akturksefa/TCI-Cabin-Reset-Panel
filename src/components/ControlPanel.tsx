@@ -11,7 +11,8 @@ import {
   Lock, 
   Unlock,
   HelpCircle,
-  CornerDownRight
+  CornerDownRight,
+  ShieldAlert
 } from 'lucide-react';
 import { Seat, SoftResetTarget, HardResetTarget, ResetType } from '../types';
 
@@ -45,9 +46,8 @@ export default function ControlPanel({
   const [softTarget, setSoftTarget] = useState<SoftResetTarget>('som');
   const [hardTarget, setHardTarget] = useState<HardResetTarget>('som');
 
-  // Slider unlock state for AMCU Full Reset
-  const [isAmcuUnlocked, setIsAmcuUnlocked] = useState<boolean>(false);
-  const [dragProgress, setDragProgress] = useState<number>(0);
+  // State for master confirmation popup/modal
+  const [showAmcuConfirm, setShowAmcuConfirm] = useState<boolean>(false);
 
   // Synced state on select seat
   useEffect(() => {
@@ -95,11 +95,7 @@ export default function ControlPanel({
   };
 
   const handleAmcuReset = () => {
-    if (!isAmcuUnlocked) return;
     onTriggerReset({ type: 'amcu' });
-    // Relock after triggering to prevent double clicks
-    setIsAmcuUnlocked(false);
-    setDragProgress(0);
   };
 
   return (
@@ -337,115 +333,24 @@ export default function ControlPanel({
                 </div>
               </div>
 
-              {/* Slider Unlocking UI - Light Professional styled */}
-              <div className="pt-2">
-                <div className="text-center mb-3">
-                  <span className="text-xs text-slate-500 font-bold">
-                    {isAmcuUnlocked ? '🔓 Safety cover unlocked. Ready to trigger.' : '🔒 Swipe slider right to lift safety cover'}
+              {/* Reset Trigger Controls */}
+              <div className="pt-2 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-[11px] leading-relaxed text-amber-800 flex gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                  <span>
+                    <strong>Authorization Required:</strong> Only certified Cabin Avionics Personnel should trigger full system restarts. All triggers are audited.
                   </span>
                 </div>
 
-                <div className="relative h-14 bg-slate-150 rounded-2xl border-2 border-slate-300 flex items-center p-1 overflow-hidden" id="slider-unlock-track">
-                  <div 
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-100 to-blue-50 transition-all duration-100 rounded-xl"
-                    style={{ width: `${dragProgress * 100}%` }}
-                  />
-
-                  {/* Drag bar / handle */}
-                  <div 
-                    className={`absolute top-1 bottom-1 h-12 w-28 border rounded-xl flex items-center justify-center gap-1.5 shadow-sm cursor-grab active:cursor-grabbing select-none transition-all ${
-                      isAmcuUnlocked 
-                        ? 'bg-red-600 border-red-700 text-white' 
-                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
-                    style={{ left: `calc(${dragProgress}% * (100% - 7rem))` }}
-                    onMouseDown={(e) => {
-                      const startX = e.clientX;
-                      const rect = document.getElementById('slider-unlock-track')?.getBoundingClientRect();
-                      if (!rect) return;
-                      const maxDistance = rect.width - 116; // width minus handle width
-
-                      const handleMouseMove = (mmE: MouseEvent) => {
-                        const deltaX = mmE.clientX - startX;
-                        const progress = Math.max(0, Math.min(1, deltaX / maxDistance));
-                        setDragProgress(progress);
-                        if (progress >= 0.95) {
-                          setIsAmcuUnlocked(true);
-                          setDragProgress(1);
-                        }
-                      };
-
-                      const handleMouseUp = () => {
-                        window.removeEventListener('mousemove', handleMouseMove);
-                        window.removeEventListener('mouseup', handleMouseUp);
-                        if (dragProgress < 0.95) {
-                          setDragProgress(0);
-                          setIsAmcuUnlocked(false);
-                        }
-                      };
-
-                      window.addEventListener('mousemove', handleMouseMove);
-                      window.addEventListener('mouseup', handleMouseUp);
-                    }}
-                    onTouchStart={(e) => {
-                      const startX = e.touches[0].clientX;
-                      const rect = document.getElementById('slider-unlock-track')?.getBoundingClientRect();
-                      if (!rect) return;
-                      const maxDistance = rect.width - 116;
-
-                      const handleTouchMove = (tmE: TouchEvent) => {
-                        const deltaX = tmE.touches[0].clientX - startX;
-                        const progress = Math.max(0, Math.min(1, deltaX / maxDistance));
-                        setDragProgress(progress);
-                        if (progress >= 0.95) {
-                          setIsAmcuUnlocked(true);
-                          setDragProgress(1);
-                        }
-                      };
-
-                      const handleTouchEnd = () => {
-                        window.removeEventListener('touchmove', handleTouchMove);
-                        window.removeEventListener('touchend', handleTouchEnd);
-                        if (dragProgress < 0.95) {
-                          setDragProgress(0);
-                          setIsAmcuUnlocked(false);
-                        }
-                      };
-
-                      window.addEventListener('touchmove', handleTouchMove);
-                      window.addEventListener('touchend', handleTouchEnd);
-                    }}
-                  >
-                    {isAmcuUnlocked ? (
-                      <>
-                        <Unlock className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-bold uppercase tracking-wide text-white">Armed</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-3.5 h-3.5 text-slate-450 animate-pulse" />
-                        <span className="text-xs font-bold uppercase tracking-wide text-slate-650">Slide Right</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Centered prompt line */}
-                  {!isAmcuUnlocked && (
-                    <div className="w-full text-center pr-2 font-mono text-[10px] uppercase font-bold text-slate-400 animate-pulse pointer-events-none flex items-center justify-end gap-1">
-                      Release Cover <ChevronRight className="w-3.5 h-3.5 inline text-slate-500" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Master action trigger button */}
+                {/* Master action trigger button targeting the modal popup */}
                 <button
                   type="button"
-                  disabled={!isAmcuUnlocked || isLoading}
-                  onClick={handleAmcuReset}
-                  className={`w-full mt-4 flex items-center justify-center gap-2 font-bold text-sm py-3.5 rounded-xl uppercase tracking-wider transition-all duration-300 shadow-sm cursor-pointer ${
-                    isAmcuUnlocked
-                      ? 'bg-red-600 text-white hover:bg-red-500 shadow shadow-red-500/10'
-                      : 'bg-slate-200 text-slate-405 cursor-not-allowed border border-slate-300'
+                  disabled={isLoading}
+                  onClick={() => setShowAmcuConfirm(true)}
+                  className={`w-full flex items-center justify-center gap-2 font-bold text-sm py-3.5 rounded-xl uppercase tracking-wider transition-all duration-200 shadow-sm cursor-pointer active:scale-[0.99] ${
+                    isLoading
+                      ? 'bg-slate-100 text-slate-450 border border-slate-200 cursor-not-allowed'
+                      : 'bg-red-600 text-white hover:bg-red-500 shadow shadow-red-500/10'
                   }`}
                   id="trigger-amcu-reset-btn"
                 >
@@ -463,6 +368,71 @@ export default function ControlPanel({
           )}
         </AnimatePresence>
       </div>
+
+      {/* ⚠️ AMCU Master Reset Confirmation Dialog Pop-up */}
+      <AnimatePresence>
+        {showAmcuConfirm && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-white rounded-2xl border border-slate-200/80 max-w-md w-full shadow-2xl overflow-hidden text-left"
+              id="amcu-confirm-modal"
+            >
+              {/* Top Warning Accent */}
+              <div className="h-1.5 w-full bg-red-600 animate-pulse" />
+              
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 w-11 h-11 rounded-full bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
+                    <ShieldAlert className="w-5.5 h-5.5" />
+                  </div>
+                  <div className="space-y-0.5 flex-1">
+                    <h3 className="text-base font-bold text-slate-900 uppercase tracking-tight">
+                      Master Reset Confirmation
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      SYSTEM ACTION: AMCU_SYSTEM_CYCLE
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <p className="text-xs text-slate-600 leading-relaxed font-sans">
+                    Are you absolutely sure you want to trigger a full master reset on the Cabin Access & Management Unit? 
+                  </p>
+                  <div className="text-xs text-slate-500 leading-relaxed font-sans bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                    <span className="font-bold text-red-700 block">⚠️ Dynamic Impact:</span>
+                    <span>This will power-cycle all active passenger IFE screens, client handset controllers, and active onboard Wi-Fi services. Recovery can take up to 6 minutes.</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-col sm:flex-row sm:justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAmcuConfirm(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 border border-slate-200 transition-all font-sans cursor-pointer order-2 sm:order-1"
+                  >
+                    Cancel Action
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAmcuReset();
+                      setShowAmcuConfirm(false);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-500 transition-all font-sans shadow-md shadow-red-600/15 cursor-pointer order-1 sm:order-2"
+                  >
+                    Yes, Confirm Reset
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
