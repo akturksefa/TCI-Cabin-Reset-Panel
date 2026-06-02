@@ -50,6 +50,73 @@ export default function App() {
     username: 'tcitest',
     status: 'nominal'
   });
+
+  const [activeToast, setActiveToast] = useState<{
+    id: string;
+    logId?: string;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+    remainingSeconds?: number;
+  } | null>(null);
+
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  // Smoothly focus and scroll to the target log item
+  const handleToastClick = (logId?: string) => {
+    if (!logId) return;
+
+    // 1. Set expand focus in logger
+    setExpandedLogId(logId);
+
+    // 2. Smoothly scroll target element to center of terminal screen
+    setTimeout(() => {
+      const element = document.getElementById(`log-${logId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Highlight flash effect
+        element.classList.add('bg-blue-50/85', 'ring-2', 'ring-blue-500/20');
+        setTimeout(() => {
+          element.classList.remove('bg-blue-50/85', 'ring-2', 'ring-blue-500/20');
+        }, 3000);
+      }
+    }, 150);
+  };
+
+  // Toast automatic dismiss and cooldown ticks
+  useEffect(() => {
+    if (!activeToast) return;
+
+    let timer: NodeJS.Timeout;
+
+    if (activeToast.remainingSeconds && activeToast.remainingSeconds > 0) {
+      // Tick down active avionics module cooldown duration once per second
+      timer = setInterval(() => {
+        setActiveToast((prev) => {
+          if (!prev) return null;
+          if (prev.remainingSeconds && prev.remainingSeconds > 1) {
+            return {
+              ...prev,
+              remainingSeconds: prev.remainingSeconds - 1,
+            };
+          }
+          return null; // Close when cooldown duration expires
+        });
+      }, 1000);
+    } else {
+      // Standard notification close after 6 seconds auto-dismissal
+      timer = setTimeout(() => {
+        setActiveToast(null);
+      }, 6000);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(timer);
+    };
+  }, [activeToast]);
+
   
   // Dashboard indicators
   const [utcTime, setUtcTime] = useState<string>('');
@@ -214,6 +281,21 @@ export default function App() {
         })
       );
 
+      // Determine feedback details for custom popup/toast
+      const isSuccessful = !!responseData.success;
+      const innerData = responseData.data || {};
+      const displayMessage = innerData.message || responseData.message || (isSuccessful ? "Command successfully delivered." : "Command delivery failed.");
+      const mcuCooldown = innerData.remainingSeconds || null;
+
+      setActiveToast({
+        id: Math.random().toString(),
+        logId: logId,
+        title: isSuccessful ? 'Command Executed' : 'Execution Denied (Cooldown)',
+        message: displayMessage,
+        type: isSuccessful ? 'success' : 'error',
+        remainingSeconds: mcuCooldown || undefined,
+      });
+
       // Start the temporary physical reboot process on the map only if execution was successful
       if (responseData.success) {
         const rebootDuration = type === 'amcu' ? 6000 : 4000;
@@ -268,6 +350,15 @@ export default function App() {
           return log;
         })
       );
+
+      // Trigger the Toast Popup on network connection failure as well
+      setActiveToast({
+        id: Math.random().toString(),
+        logId: logId,
+        title: 'Connection Lost',
+        message: err.message || 'The Avionics Reset Suite was unable to connect to the SSH cockpit target.',
+        type: 'error',
+      });
 
       // Reset seat statuses back to online on connectivity error
       if (type === 'soft' || type === 'hard') {
@@ -509,6 +600,8 @@ export default function App() {
           <ActivityLog
             logs={logs}
             onClearLogs={() => setLogs([])}
+            expandedLogId={expandedLogId}
+            onExpandedLogIdChange={setExpandedLogId}
           />
         </section>
 
@@ -525,6 +618,87 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      {/* Dynamic Avionics Status Alert Toast Overlay */}
+      {activeToast && (
+        <div 
+          onClick={() => {
+            if (activeToast.logId) {
+              handleToastClick(activeToast.logId);
+            }
+            setActiveToast(null);
+          }}
+          className={`fixed bottom-6 right-6 z-50 max-w-sm w-full bg-white rounded-xl shadow-2xl border border-slate-200/80 overflow-hidden animate-slide-up-custom pointer-events-auto transition-all duration-200 group/toast ${
+            activeToast.logId 
+              ? 'cursor-pointer hover:bg-slate-50 hover:border-blue-400 hover:shadow-blue-105/20 active:scale-[0.985]' 
+              : 'cursor-pointer hover:bg-slate-50 active:scale-[0.985]'
+          }`}
+          title={activeToast.logId ? "Click to view logs" : "Click to dismiss"}
+        >
+          {/* Top visual accent color line */}
+          <div className={`h-1.5 w-full ${
+            activeToast.type === 'success' 
+              ? 'bg-emerald-500' 
+              : 'bg-rose-500 animate-pulse'
+          }`} />
+          
+          <div className="p-4 flex gap-3.5">
+            {/* Round Icon container */}
+            <div className="shrink-0 mt-0.5">
+              {activeToast.type === 'success' ? (
+                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100 group-hover/toast:bg-emerald-100 transition-colors">
+                  <CheckCircle className="w-4.5 h-4.5 text-emerald-600" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center border border-rose-100 group-hover/toast:bg-rose-100 transition-colors">
+                  <ShieldAlert className="w-4.5 h-4.5 text-rose-600" />
+                </div>
+              )}
+            </div>
+
+            {/* Content text */}
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider font-sans">
+                  {activeToast.title}
+                </span>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveToast(null);
+                  }} 
+                  className="text-slate-400 hover:text-slate-600 font-mono text-xs font-bold transition-colors cursor-pointer px-1 relative z-10"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed font-sans">
+                {activeToast.message}
+              </p>
+
+              {/* Action Hint Trigger for Quick Log Deep-Link */}
+              {activeToast.logId && (
+                <span className="mt-2.5 pt-2 border-t border-slate-100/80 block text-[10px] text-blue-600 font-bold group-hover/toast:text-blue-700 font-sans transition-colors">
+                  ➜ Click to focus request payload & HTTP details
+                </span>
+              )}
+
+              {/* Countdown counter for real hardware cooldown restrictions */}
+              {activeToast.remainingSeconds && activeToast.remainingSeconds > 0 ? (
+                <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono">
+                  <span className="text-slate-400 flex items-center gap-1 font-sans font-bold">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                    LOCK OUT TIMER
+                  </span>
+                  <span className="font-bold text-amber-700 bg-amber-50 border border-amber-200/50 px-2 py-0.5 rounded leading-none">
+                    {Math.floor(activeToast.remainingSeconds / 60)}m {activeToast.remainingSeconds % 60}s
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Terminal, 
@@ -19,13 +19,60 @@ import { ResetLog } from '../types';
 interface ActivityLogProps {
   logs: ResetLog[];
   onClearLogs: () => void;
+  expandedLogId?: string | null;
+  onExpandedLogIdChange?: (id: string | null) => void;
 }
 
-export default function ActivityLog({ logs, onClearLogs }: ActivityLogProps) {
+export default function ActivityLog({ 
+  logs, 
+  onClearLogs,
+  expandedLogId: controlledExpandedLogId,
+  onExpandedLogIdChange
+}: ActivityLogProps) {
   const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [search, setSearch] = useState<string>('');
-  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [localExpandedLogId, setLocalExpandedLogId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const expandedLogId = controlledExpandedLogId !== undefined ? controlledExpandedLogId : localExpandedLogId;
+  const setExpandedLogId = (id: string | null) => {
+    if (onExpandedLogIdChange) {
+      onExpandedLogIdChange(id);
+    } else {
+      setLocalExpandedLogId(id);
+    }
+  };
+
+  // Automatically clear filter or search if the externally focused log wouldn't be visible
+  useEffect(() => {
+    if (expandedLogId) {
+      const targetLog = logs.find(l => l.id === expandedLogId);
+      if (targetLog) {
+        // If the targeting log is hidden by status filter, switch to 'all'
+        if (filter !== 'all') {
+          const matchesFilter =
+            (filter === 'success' && targetLog.status === 'success') ||
+            (filter === 'failed' && targetLog.status === 'failed');
+          if (!matchesFilter) {
+            setFilter('all');
+          }
+        }
+        
+        // If hidden by search filter, reset search
+        if (search) {
+          const searchStr = search.toLowerCase();
+          const matchesSearch =
+            targetLog.type.toLowerCase().includes(searchStr) ||
+            JSON.stringify(targetLog.payload).toLowerCase().includes(searchStr) ||
+            (targetLog.responseBody && JSON.stringify(targetLog.responseBody).toLowerCase().includes(searchStr)) ||
+            (targetLog.error && targetLog.error.toLowerCase().includes(searchStr));
+          if (!matchesSearch) {
+            setSearch('');
+          }
+        }
+      }
+    }
+  }, [expandedLogId, logs]);
 
   // Filter logs based on search and selected filter
   const filteredLogs = logs.filter((log) => {
@@ -168,7 +215,7 @@ export default function ActivityLog({ logs, onClearLogs }: ActivityLogProps) {
               const hasSuccess = log.status === 'success';
 
               return (
-                <div key={log.id} className="flex flex-col bg-white">
+                <div key={log.id} id={`log-${log.id}`} className="flex flex-col bg-white transition-all duration-305">
                   {/* Summary Bar Component */}
                   <div
                     onClick={() => toggleExpand(log.id)}
