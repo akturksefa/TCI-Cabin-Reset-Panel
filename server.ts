@@ -123,8 +123,15 @@ async function startServer() {
         responseData = { stdout: sshResult.stdout, stderr: sshResult.stderr };
       }
 
+      // Differentiate success using the actual inner payload's success field
+      // since target API might return 200 HTTP status even for errors like Cooldown periods.
+      let isExecutionSuccessful = !sshResult.stderr || sshResult.stderr.toLowerCase().indexOf('error') === -1;
+      if (responseData && typeof responseData === 'object' && typeof responseData.success === 'boolean') {
+        isExecutionSuccessful = responseData.success;
+      }
+
       return res.json({
-        success: !sshResult.stderr || sshResult.stderr.toLowerCase().indexOf('error') === -1,
+        success: isExecutionSuccessful,
         data: responseData,
         isSimulated: false,
         command: curlCommand,

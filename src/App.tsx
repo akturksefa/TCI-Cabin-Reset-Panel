@@ -214,16 +214,34 @@ export default function App() {
         })
       );
 
-      // Start the temporary physical reboot process on the map
-      const rebootDuration = type === 'amcu' ? 6000 : 4000;
-      setTimeout(() => {
-        const timeStr = new Date().toLocaleTimeString();
+      // Start the temporary physical reboot process on the map only if execution was successful
+      if (responseData.success) {
+        const rebootDuration = type === 'amcu' ? 6000 : 4000;
+        setTimeout(() => {
+          const timeStr = new Date().toLocaleTimeString();
+          if (type === 'soft' || type === 'hard') {
+            if (rowNumber && seatId) {
+              updateSeatStatus(rowNumber, seatId, 'online', timeStr);
+              // Sync with selectedSeat view so it refreshes right away
+              if (selectedSeat?.id === `${rowNumber}${seatId}`) {
+                setSelectedSeat((prev) => prev ? { ...prev, status: 'online', lastResetTime: timeStr } : null);
+              }
+            }
+          } else if (type === 'ssb') {
+            if (rowNumber) {
+              updateRowStatus(rowNumber, 'online');
+            }
+          } else if (type === 'amcu') {
+            updateAllCabinStatus('online');
+          }
+        }, rebootDuration);
+      } else {
+        // Revert state change immediately so the GUI reflects execution failure (e.g., cooldown)
         if (type === 'soft' || type === 'hard') {
           if (rowNumber && seatId) {
-            updateSeatStatus(rowNumber, seatId, 'online', timeStr);
-            // Sync with selectedSeat view so it refreshes right away
+            updateSeatStatus(rowNumber, seatId, 'online');
             if (selectedSeat?.id === `${rowNumber}${seatId}`) {
-              setSelectedSeat((prev) => prev ? { ...prev, status: 'online', lastResetTime: timeStr } : null);
+              setSelectedSeat((prev) => prev ? { ...prev, status: 'online' } : null);
             }
           }
         } else if (type === 'ssb') {
@@ -233,7 +251,7 @@ export default function App() {
         } else if (type === 'amcu') {
           updateAllCabinStatus('online');
         }
-      }, rebootDuration);
+      }
 
     } catch (err: any) {
       console.error('API execution failed:', err);
