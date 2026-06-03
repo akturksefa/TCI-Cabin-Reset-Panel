@@ -90,6 +90,7 @@ export default function ControlPanel({
       onTriggerReset({
         type: 'ssb',
         rowNumber: manualRow,
+        seatId: manualSeatLetter,
       });
     }
   };
@@ -196,7 +197,7 @@ export default function ControlPanel({
                   <select
                     value={manualSeatLetter}
                     onChange={(e) => setManualSeatLetter(e.target.value)}
-                    disabled={isLoading || resetType === 'ssb'}
+                    disabled={isLoading}
                     className="bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 px-3 py-2 rounded-lg text-slate-800 font-mono text-sm focus:outline-none disabled:opacity-40 cursor-pointer"
                     id="select-seat-letter"
                   >
@@ -268,9 +269,9 @@ export default function ControlPanel({
                 <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg text-xs leading-relaxed text-slate-600">
                   <p className="font-bold text-blue-700 mb-1 flex items-center gap-1">
                     <Cpu className="w-3.5 h-3.5 text-blue-600" />
-                    SSB (Seat Smart Box) Row Controller Reset
+                    SSB (Seat Smart Box) Controller Reset
                   </p>
-                  This triggers a complete row-level hardware power-cycle to the mcu of the selected row. Targets all seats on Row <span className="font-mono text-slate-800 font-bold">{manualRow}</span> (Seats A, B, C, D, E, F).
+                  This triggers a hardware power-cycle to the mcu of the selected seat smart box. Targets Row <span className="font-mono text-slate-800 font-bold">{manualRow}</span>, Seat <span className="font-mono text-slate-800 font-bold">{manualSeatLetter}</span>.
                 </div>
               )}
 
@@ -292,7 +293,7 @@ export default function ControlPanel({
                     <Play className="w-4 h-4" />
                     {resetType === 'soft' && `Trigger Soft Reboot - Seat ${manualRow}${manualSeatLetter}`}
                     {resetType === 'hard' && `Trigger Hard Reset - Seat ${manualRow}${manualSeatLetter}`}
-                    {resetType === 'ssb' && `Trigger SSB MCU Reset - Row ${manualRow}`}
+                    {resetType === 'ssb' && `Trigger SSB MCU Reset - Seat ${manualRow}${manualSeatLetter}`}
                   </>
                 )}
               </button>

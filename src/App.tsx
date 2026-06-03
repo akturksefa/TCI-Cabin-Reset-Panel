@@ -249,7 +249,7 @@ export default function App() {
         reqBody = { ...reqBody, seatId, rowNumber, target };
       } else if (type === 'ssb') {
         endpoint = '/api/proxy/v1/mcu-reset';
-        reqBody = { ...reqBody, rowNumber };
+        reqBody = { ...reqBody, rowNumber, seatId };
       } else if (type === 'amcu') {
         endpoint = '/api/proxy/v1/full-reset';
       }

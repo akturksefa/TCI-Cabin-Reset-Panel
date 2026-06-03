@@ -49,10 +49,10 @@ Sistemin uçak içi ana ağ geçidine veya laboratuvar test terminaline bağlana
 SSH_HOST=10.18.225.250
 
 # SSH Gateway Kullanıcı Adı (Varsayılan: tcitest)
-SSH_USER=*****
+SSH_USER=tcitest
 
 # SSH Gateway Şifre (Varsayılan: tcitest1.)
-SSH_PASS=********
+SSH_PASS=tcitest1.
 ```
 
 ---
