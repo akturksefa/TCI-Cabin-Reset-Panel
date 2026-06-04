@@ -6,6 +6,20 @@ Arayüz, kabin içi donanımlara SSH tünelleri vasıtasıyla güvenli komut gö
 
 ---
 
+## 📸 Arayüz Görselleri / Application Screenshots
+
+### 💺 1. Kabin Canlı Durum Haritası ve Kontrol Paneli (Cabin Live View)
+Uçağın koltuk konfigürasyonunu anlık olarak renklendirilmiş durum ledleri ile gösteren, seçilen koltuk veya sıra üzerinde fiziksel ve mantımsal sıfırlama (Soft/Hard/SSB Reset) işlemlerini yürütebilen ana operasyon paneli:
+
+![TCI Kabin Canlı Durum Haritası](./src/assets/images/cabin_crew_dashboard_mockup_1780556361439.png)
+
+### ⚡ 2. Otomasyon Sıralayıcı ve Ardışık Tetikleme (Automation Sequencer)
+Kabin genelinde aşırı akım yüklenmelerini önleyen dinamik kilitli aşama gecikmeleriyle (Staggering Cooldowns), koltuk veya SSB sıfırlama görevlerini ardışık olarak koşturan, listesi özelleştirilebilir otomasyon paneli:
+
+![TCI Otomasyon Sıralayıcı Paneli](./src/assets/images/automation_sequencer_mockup_1780556381423.png)
+
+---
+
 ## 🛠️ Mimari ve Çalışma Prensibi
 
 Sistem, modern web standartlarında yüksek kararlılık ve gerçek zamanlı geri bildirim odaklı geliştirilmiştir:

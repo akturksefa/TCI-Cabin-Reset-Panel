@@ -17,6 +17,7 @@ import {
 import CabinMap from './components/CabinMap';
 import ControlPanel from './components/ControlPanel';
 import ActivityLog from './components/ActivityLog';
+import AutomationPanel from './components/AutomationPanel';
 import { CabinRow, Seat, ResetLog, ResetType } from './types';
 
 // Helper to generate 30 Aircraft Rows with seats A, B, C, D, E, F
@@ -61,6 +62,7 @@ export default function App() {
   } | null>(null);
 
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'dashboard' | 'automation'>('dashboard');
 
   // Smoothly focus and scroll to the target log item
   const handleToastClick = (logId?: string) => {
@@ -508,6 +510,30 @@ export default function App() {
       {/* 2. Primary Layout Grid Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
+        {/* Sleek View Multi-Tab Selector Container */}
+        <div className="flex bg-slate-205 p-1 rounded-xl max-w-md border border-slate-300/40">
+          <button
+            onClick={() => setActiveView('dashboard')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase rounded-lg transition-all cursor-pointer ${
+              activeView === 'dashboard'
+                ? 'bg-white text-[#1B2B4E] shadow-sm font-extrabold'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-300/10'
+            }`}
+          >
+            💺 Cabin Live View
+          </button>
+          <button
+            onClick={() => setActiveView('automation')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase rounded-lg transition-all cursor-pointer ${
+              activeView === 'automation'
+                ? 'bg-blue-600 text-white shadow shadow-blue-500/10 font-extrabold'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-300/10'
+            }`}
+          >
+            ⚡ Automation Sequencer
+          </button>
+        </div>
+
         {/* Core Quick Stats & Info Card Row - Professional Polish Styles */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-4" id="stats-ribbon">
           
@@ -572,28 +598,37 @@ export default function App() {
           </div>
         </div>
 
-        {/* Dashboard grid layout (Cabin on the left, Control form on the right) */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 xl:col-span-8">
-            <CabinMap
-              rows={cabinRows}
-              selectedSeat={selectedSeat}
-              onSelectSeat={handleSelectSeat}
-              onRowMcuReset={handleRowMcuReset}
-              isLoading={isLoading}
-            />
-          </div>
+        {/* Dashboard grid layout (Cabin on the left, Control form on the right / or Automation Panel) */}
+        {activeView === 'dashboard' ? (
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
+            <div className="lg:col-span-7 xl:col-span-8">
+              <CabinMap
+                rows={cabinRows}
+                selectedSeat={selectedSeat}
+                onSelectSeat={handleSelectSeat}
+                onRowMcuReset={handleRowMcuReset}
+                isLoading={isLoading}
+              />
+            </div>
 
-          <div className="lg:col-span-5 xl:col-span-4 h-full">
-            <ControlPanel
-              selectedSeat={selectedSeat}
-              onTriggerReset={handleTriggerReset}
-              isLoading={isLoading}
-              isSimulating={isSimulating}
-              setIsSimulating={setIsSimulating}
-            />
-          </div>
-        </section>
+            <div className="lg:col-span-5 xl:col-span-4 h-full">
+              <ControlPanel
+                selectedSeat={selectedSeat}
+                onTriggerReset={handleTriggerReset}
+                isLoading={isLoading}
+                isSimulating={isSimulating}
+                setIsSimulating={setIsSimulating}
+              />
+            </div>
+          </section>
+        ) : (
+          <AutomationPanel
+            cabinRows={cabinRows}
+            onTriggerReset={handleTriggerReset}
+            isLoading={isLoading}
+            onBackToDashboard={() => setActiveView('dashboard')}
+          />
+        )}
 
         {/* Logs console representation */}
         <section>
