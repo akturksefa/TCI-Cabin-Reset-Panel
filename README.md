@@ -60,13 +60,12 @@ Sistemin uçak içi ana ağ geçidine veya laboratuvar test terminaline bağlana
 
 ```env
 # Gateway IP / Domain (Varsayılan: 10.18.225.250)
-SSH_HOST=10.18.225.250
+SSH_HOST=*************
 
 # SSH Gateway Kullanıcı Adı (Varsayılan: tcitest)
-SSH_USER=tcitest
-
+SSH_USER=*************
 # SSH Gateway Şifre (Varsayılan: tcitest1.)
-SSH_PASS=tcitest1.
+SSH_PASS=************
 ```
 
 ---
