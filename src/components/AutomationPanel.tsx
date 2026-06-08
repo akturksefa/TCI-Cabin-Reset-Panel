@@ -24,7 +24,7 @@ import {
   ArrowDown,
   X
 } from 'lucide-react';
-import { Seat, ResetType } from '../types';
+import { Seat, ResetType, SoftResetTarget, HardResetTarget } from '../types';
 
 interface AutomationTask {
   id: string;
@@ -34,6 +34,7 @@ interface AutomationTask {
   delaySeconds: number;
   status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
   progress?: number;
+  target?: string;
 }
 
 interface AutomationPanelProps {
@@ -62,6 +63,18 @@ export default function AutomationPanel({
   
   // Builder form inputs
   const [resetType, setResetType] = useState<ResetType>('soft');
+  const [softTarget, setSoftTarget] = useState<SoftResetTarget>('som');
+  const [hardTarget, setHardTarget] = useState<HardResetTarget>('som');
+  
+  // Target documentation explanations to make it extremely professional
+  const targetExplanations: Record<string, string> = {
+    som: 'SOM (Seat Option Module): Handles in-seat peripheral power & sensor suites.',
+    handset: 'Passenger Handset: Quick reboot of the client handset telephone/remote control.',
+    '4kdu': '4KDU (4K Display Unit): Restarts the main seat-back touchscreen display.',
+    ccu: 'CCU (Cabin Control Unit): Gateways AV/power to this specific seat cluster.',
+    full: 'Full seat reset: Overwrites power lines and restarts the entire seat stack.',
+  };
+
   const [rowSelectionMode, setRowSelectionMode] = useState<'range' | 'custom'>('range');
   const [startRow, setStartRow] = useState<number>(1);
   const [endRow, setEndRow] = useState<number>(5);
@@ -256,6 +269,7 @@ export default function AutomationPanel({
 
     targetRows.forEach((rowNum, rowIdx) => {
       const uniqueId = `task-${Date.now()}-${rowNum}-${Math.random().toString(36).substring(2, 6)}`;
+      const currentTarget = resetType === 'soft' ? softTarget : resetType === 'hard' ? hardTarget : undefined;
       
       // Handle Seat Selection modes
       if (seatSelectionMode === 'all') {
@@ -265,7 +279,8 @@ export default function AutomationPanel({
           rowNumber: rowNum,
           seatId: 'ALL',
           delaySeconds: taskDelay,
-          status: 'pending'
+          status: 'pending',
+          target: currentTarget
         });
       } else if (seatSelectionMode === 'specific') {
         newTasksToAdd.push({
@@ -274,7 +289,8 @@ export default function AutomationPanel({
           rowNumber: rowNum,
           seatId: specificSeat,
           delaySeconds: taskDelay,
-          status: 'pending'
+          status: 'pending',
+          target: currentTarget
         });
       } else if (seatSelectionMode === 'side-port') {
         // A, B, C Left-side
@@ -285,7 +301,8 @@ export default function AutomationPanel({
             rowNumber: rowNum,
             seatId: s,
             delaySeconds: subIdx === 0 ? taskDelay : 0.5, // low lag step between immediate seats
-            status: 'pending'
+            status: 'pending',
+            target: currentTarget
           });
         });
       } else if (seatSelectionMode === 'side-starboard') {
@@ -297,7 +314,8 @@ export default function AutomationPanel({
             rowNumber: rowNum,
             seatId: s,
             delaySeconds: subIdx === 0 ? taskDelay : 0.5,
-            status: 'pending'
+            status: 'pending',
+            target: currentTarget
           });
         });
       }
@@ -367,12 +385,6 @@ export default function AutomationPanel({
       setTasks(prev => prev.map((t, idx) => idx === nextIdx ? { ...t, status: 'running' } : t));
 
       try {
-        const payload = {
-          type: activeTask.type,
-          rowNumber: activeTask.rowNumber,
-          target: 'full'
-        };
-
         // If target is ALL seats in row, cascade loop or trigger on all seat characters
         if (activeTask.seatId === 'ALL') {
           // Trigger individual resets sequential
@@ -382,7 +394,7 @@ export default function AutomationPanel({
               type: activeTask.type,
               rowNumber: activeTask.rowNumber,
               seatId: char,
-              target: 'full'
+              target: activeTask.target || 'full'
             });
           }
         } else {
@@ -390,7 +402,7 @@ export default function AutomationPanel({
             type: activeTask.type,
             rowNumber: activeTask.rowNumber,
             seatId: activeTask.seatId,
-            target: 'full'
+            target: activeTask.target || 'full'
           });
         }
 
@@ -521,6 +533,59 @@ export default function AutomationPanel({
                 </button>
               </div>
             </div>
+
+            {/* Target Selection depending on type */}
+            {resetType === 'soft' && (
+              <div className="flex flex-col gap-1.5 space-y-1">
+                <label className="block text-[11px] font-bold text-slate-500 uppercase">Soft Reset Target</label>
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 border border-slate-200 rounded-lg">
+                  {(['som', 'handset', 'full'] as SoftResetTarget[]).map((t) => (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => setSoftTarget(t)}
+                      className={`py-1.5 rounded-md font-mono text-xs uppercase cursor-pointer font-bold ${
+                        softTarget === t
+                          ? 'bg-white text-blue-700 shadow-sm border border-slate-200'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 mt-1 flex gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                  <span>{targetExplanations[softTarget]}</span>
+                </div>
+              </div>
+            )}
+
+            {resetType === 'hard' && (
+              <div className="flex flex-col gap-1.5 space-y-1">
+                <label className="block text-[11px] font-bold text-slate-500 uppercase">Hard Reset Target</label>
+                <div className="grid grid-cols-5 gap-1 p-1 bg-slate-100 border border-slate-205 rounded-lg overflow-x-auto">
+                  {(['som', 'handset', '4kdu', 'ccu', 'full'] as HardResetTarget[]).map((t) => (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => setHardTarget(t)}
+                      className={`py-1.5 rounded text-[10px] font-mono uppercase cursor-pointer font-bold ${
+                        hardTarget === t
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 mt-1 flex gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{targetExplanations[hardTarget]}</span>
+                </div>
+              </div>
+            )}
 
             {/* Row Grid Pick */}
             <div className="space-y-1.5 text-xs">
@@ -771,7 +836,7 @@ export default function AutomationPanel({
                             #{String(idx + 1).padStart(2, '0')}
                           </span>
                           
-                          {/* Type Indicator */}
+                           {/* Type Indicator */}
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold leading-none ${
                             task.type === 'soft' 
                               ? 'bg-blue-900/40 text-blue-300' 
@@ -779,7 +844,7 @@ export default function AutomationPanel({
                               ? 'bg-red-900/40 text-red-300' 
                               : 'bg-amber-900/40 text-amber-300'
                           }`}>
-                            {task.type.toUpperCase()}
+                            {task.type.toUpperCase()}{task.target ? ` · ${task.target.toUpperCase()}` : ''}
                           </span>
 
                           <span className="font-bold text-slate-100">

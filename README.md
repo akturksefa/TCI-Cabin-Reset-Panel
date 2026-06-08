@@ -11,12 +11,12 @@ Arayüz, kabin içi donanımlara SSH tünelleri vasıtasıyla güvenli komut gö
 ### 💺 1. Kabin Canlı Durum Haritası ve Kontrol Paneli (Cabin Live View)
 Uçağın koltuk konfigürasyonunu anlık olarak renklendirilmiş durum ledleri ile gösteren, seçilen koltuk veya sıra üzerinde fiziksel ve mantımsal sıfırlama (Soft/Hard/SSB Reset) işlemlerini yürütebilen ana operasyon paneli:
 
-![TCI Kabin Canlı Durum Haritası](./src/assets/images/src/assets/images/04.06.2026_13.57.55_REC.png)
+![TCI Kabin Canlı Durum Haritası](./src/assets/images/cabin_crew_dashboard_mockup_1780556361439.png)
 
 ### ⚡ 2. Otomasyon Sıralayıcı ve Ardışık Tetikleme (Automation Sequencer)
 Kabin genelinde aşırı akım yüklenmelerini önleyen dinamik kilitli aşama gecikmeleriyle (Staggering Cooldowns), koltuk veya SSB sıfırlama görevlerini ardışık olarak koşturan, listesi özelleştirilebilir otomasyon paneli:
 
-![TCI Otomasyon Sıralayıcı Paneli](./src/assets/images/src/assets/images/04.06.2026_13.58.36_REC2.png)
+![TCI Otomasyon Sıralayıcı Paneli](./src/assets/images/automation_sequencer_mockup_1780556381423.png)
 
 ---
 
@@ -54,7 +54,20 @@ Sistem, modern web standartlarında yüksek kararlılık ve gerçek zamanlı ger
 
 ---
 
+## ⚙️ Yapılandırma ve Çevre Değişkenleri (Configuration)
 
+Sistemin uçak içi ana ağ geçidine veya laboratuvar test terminaline bağlanabilmesi için aşağıdaki çevre değişkenlerinin `.env` dosyasında tanımlanması gerekir:
+
+```env
+# Gateway IP / Domain (Varsayılan: 10.18.225.250)
+SSH_HOST=10.18.225.250
+
+# SSH Gateway Kullanıcı Adı (Varsayılan: tcitest)
+SSH_USER=tcitest
+
+# SSH Gateway Şifre (Varsayılan: tcitest1.)
+SSH_PASS=tcitest1.
+```
 
 ---
 
