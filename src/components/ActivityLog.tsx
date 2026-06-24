@@ -12,7 +12,8 @@ import {
   Code,
   Globe2,
   Copy,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 import { ResetLog } from '../types';
 
@@ -41,6 +42,31 @@ export default function ActivityLog({
     } else {
       setLocalExpandedLogId(id);
     }
+  };
+
+  const handleDownloadLogs = () => {
+    if (logs.length === 0) return;
+    
+    // Create formatted data representation
+    const textData = JSON.stringify(logs, null, 2);
+    const blob = new Blob([textData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create temporary link element to trigger the download
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Create fine precise filename with timestamp
+    const dateStr = new Date().toISOString().split('T')[0];
+    const timeStr = new Date().toLocaleTimeString().replace(/:/g, '-');
+    link.download = `tci_cabin_bus_logs_${dateStr}_${timeStr}.json`;
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Automatically clear filter or search if the externally focused log wouldn't be visible
@@ -144,14 +170,25 @@ export default function ActivityLog({
         </div>
 
         {logs.length > 0 && (
-          <button
-            onClick={onClearLogs}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg text-xs font-bold select-none transition-colors cursor-pointer"
-            id="clear-logs-btn"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-            Flush Buffer
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadLogs}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/50 hover:bg-blue-50 text-blue-650 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-lg text-xs font-bold select-none transition-colors cursor-pointer"
+              id="download-logs-btn"
+              title="Download full operational JSON logs"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-500" />
+              Download Logs (.json)
+            </button>
+            <button
+              onClick={onClearLogs}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg text-xs font-bold select-none transition-colors cursor-pointer"
+              id="clear-logs-btn"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+              Flush Buffer
+            </button>
+          </div>
         )}
       </div>
 

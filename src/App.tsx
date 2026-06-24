@@ -18,6 +18,7 @@ import CabinMap from './components/CabinMap';
 import ControlPanel from './components/ControlPanel';
 import ActivityLog from './components/ActivityLog';
 import AutomationPanel from './components/AutomationPanel';
+import StressTestPanel from './components/StressTestPanel';
 import { CabinRow, Seat, ResetLog, ResetType } from './types';
 
 // Helper to generate 30 Aircraft Rows with seats A, B, C, D, E, F
@@ -62,7 +63,7 @@ export default function App() {
   } | null>(null);
 
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'dashboard' | 'automation'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'automation' | 'stresstest'>('dashboard');
 
   // Smoothly focus and scroll to the target log item
   const handleToastClick = (logId?: string) => {
@@ -337,6 +338,7 @@ export default function App() {
         }
       }
 
+      return responseData;
     } catch (err: any) {
       console.error('API execution failed:', err);
       // Fail log gracefully
@@ -511,7 +513,7 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         {/* Sleek View Multi-Tab Selector Container */}
-        <div className="flex bg-slate-205 p-1 rounded-xl max-w-md border border-slate-300/40">
+        <div className="flex bg-slate-205 p-1 rounded-xl max-w-xl border border-slate-300/40">
           <button
             onClick={() => setActiveView('dashboard')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase rounded-lg transition-all cursor-pointer ${
@@ -531,6 +533,16 @@ export default function App() {
             }`}
           >
             ⚡ Automation Sequencer
+          </button>
+          <button
+            onClick={() => setActiveView('stresstest')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase rounded-lg transition-all cursor-pointer ${
+              activeView === 'stresstest'
+                ? 'bg-amber-600 text-white shadow shadow-amber-500/10 font-extrabold'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-300/10'
+            }`}
+          >
+            🔁 Loop Stress Test
           </button>
         </div>
 
@@ -621,8 +633,15 @@ export default function App() {
               />
             </div>
           </section>
-        ) : (
+        ) : activeView === 'automation' ? (
           <AutomationPanel
+            cabinRows={cabinRows}
+            onTriggerReset={handleTriggerReset}
+            isLoading={isLoading}
+            onBackToDashboard={() => setActiveView('dashboard')}
+          />
+        ) : (
+          <StressTestPanel
             cabinRows={cabinRows}
             onTriggerReset={handleTriggerReset}
             isLoading={isLoading}
