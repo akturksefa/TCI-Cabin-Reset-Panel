@@ -65,12 +65,19 @@ async function startServer() {
   // TCI API Base URL
   const TCI_BASE_URL = 'https://crewcontrol.tci.aero/api/v1';
 
+  // Active SSH configuration state (dynamic and modifiable by the client)
+  const activeSSHConfig = {
+    host: process.env.SSH_HOST || '10.18.225.250',
+    username: process.env.SSH_USER || 'tcitest',
+    password: process.env.SSH_PASS || 'tcitest1.',
+  };
+
   // SSH execution client helper to execute curl commands on the user's specific gateway host
   function executeSSHCommand(
     command: string,
-    host = process.env.SSH_HOST || '10.18.225.250',
-    username = process.env.SSH_USER || 'tcitest',
-    password = process.env.SSH_PASS || 'tcitest1.'
+    host = activeSSHConfig.host,
+    username = activeSSHConfig.username,
+    password = activeSSHConfig.password
   ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
       const conn = new Client();
@@ -149,9 +156,9 @@ async function startServer() {
       });
     }
 
-    const host = process.env.SSH_HOST || '10.18.225.250';
-    const username = process.env.SSH_USER || 'tcitest';
-    const password = process.env.SSH_PASS || 'tcitest1.';
+    const host = activeSSHConfig.host;
+    const username = activeSSHConfig.username;
+    const password = activeSSHConfig.password;
 
     try {
       console.log(`[SSH Proxy] Logging into ${host} as ${username} to run command: ${curlCommand}`);
@@ -216,8 +223,24 @@ async function startServer() {
   // Gateway config information api
   app.get('/api/proxy/ssh-config', (req, res) => {
     res.json({
-      host: process.env.SSH_HOST || "10.18.225.250",
-      username: process.env.SSH_USER || "tcitest",
+      host: activeSSHConfig.host,
+      username: activeSSHConfig.username,
+      status: "nominal"
+    });
+  });
+
+  // Update Gateway config information api
+  app.post('/api/proxy/ssh-config', (req, res) => {
+    const { host, username, password } = req.body;
+    if (host) activeSSHConfig.host = host;
+    if (username) activeSSHConfig.username = username;
+    if (password !== undefined) activeSSHConfig.password = password;
+    
+    console.log(`[SSH Config] SSH Target updated to: ${activeSSHConfig.username}@${activeSSHConfig.host}`);
+    res.json({
+      success: true,
+      host: activeSSHConfig.host,
+      username: activeSSHConfig.username,
       status: "nominal"
     });
   });

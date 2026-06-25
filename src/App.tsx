@@ -135,8 +135,42 @@ export default function App() {
           setSshConfig(data);
         }
       })
-      .catch((err) => console.warn('Coult not load live SSH config from server:', err));
+      .catch((err) => console.warn('Could not load live SSH config from server:', err));
   }, []);
+
+  // Update gateway config on backend
+  const handleUpdateSshConfig = async (host: string, username: string, password?: string) => {
+    try {
+      const response = await fetch('/api/proxy/ssh-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, username, password }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSshConfig({
+          host: data.host,
+          username: data.username,
+          status: 'nominal',
+        });
+        
+        setActiveToast({
+          id: Math.random().toString(),
+          title: 'SSH Gateway Updated',
+          message: `Active gateway switched to ${data.username}@${data.host} successfully.`,
+          type: 'success',
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to update SSH config on server:', err);
+      setActiveToast({
+        id: Math.random().toString(),
+        title: 'Config Update Failed',
+        message: err.message || 'Unable to update server SSH settings.',
+        type: 'error',
+      });
+    }
+  };
 
   // UTC clock update at interval
   useEffect(() => {
@@ -487,9 +521,32 @@ export default function App() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="text-slate-400 font-bold">SSH GATEWAY:</span>
-          <span className="text-white font-bold bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
-            {sshConfig?.username || 'tcitest'}@{sshConfig?.host || '10.18.225.250'}
-          </span>
+          
+          <div className="flex bg-slate-800 p-0.5 rounded border border-slate-700 items-center gap-1">
+            <button
+              onClick={() => handleUpdateSshConfig('10.18.225.250', 'tcitest', 'tcitest1.')}
+              className={`px-2 py-1 rounded text-[10px] font-bold cursor-pointer transition-all ${
+                sshConfig?.host === '10.18.225.250'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Connect via Aircraft Production IP (10.18.225.250)"
+            >
+              🛫 TK-Prod (10.18.225.250)
+            </button>
+            <button
+              onClick={() => handleUpdateSshConfig('192.168.0.2', 'tcitest', 'tcitest1.')}
+              className={`px-2 py-1 rounded text-[10px] font-bold cursor-pointer transition-all ${
+                sshConfig?.host === '192.168.0.2'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Connect via Alternative Local IP (192.168.0.2)"
+            >
+              🏠 Alt-Local (192.168.0.2)
+            </button>
+          </div>
+
           <span className="text-slate-600">|</span>
           <span className="text-slate-400">Target Cabin Web API:</span>
           <span className="text-sky-400">crewcontrol.tci.aero</span>
