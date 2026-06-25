@@ -58,16 +58,6 @@ Sistem, modern web standartlarında yüksek kararlılık ve gerçek zamanlı ger
 
 Sistemin uçak içi ana ağ geçidine veya laboratuvar test terminaline bağlanabilmesi için aşağıdaki çevre değişkenlerinin `.env` dosyasında tanımlanması gerekir:
 
-```env
-# Gateway IP / Domain (Varsayılan: 10.18.225.250)
-SSH_HOST=10.18.225.250
-
-# SSH Gateway Kullanıcı Adı (Varsayılan: tcitest)
-SSH_USER=tcitest
-
-# SSH Gateway Şifre (Varsayılan: tcitest1.)
-SSH_PASS=tcitest1.
-```
 
 ---
 
