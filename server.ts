@@ -1,7 +1,53 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { Client } from 'ssh2';
+
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+function saveLogToServer(
+  endpoint: string,
+  payload: any,
+  success: boolean,
+  resultMessage: string,
+  isSimulated: boolean,
+  durationMs: number
+) {
+  try {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}:${seconds}`;
+    const timestamp = `${dateStr} ${timeStr}`;
+
+    const logFileName = `logs_${dateStr}.log`;
+    const logFilePath = path.join(logsDir, logFileName);
+
+    const statusText = success ? 'SUCCESS' : 'FAILED';
+    const modeText = isSimulated ? 'SIMULATED' : 'LIVE';
+    
+    const rowInfo = payload?.rowNumber ? `Row: ${payload.rowNumber}` : 'Row: N/A';
+    const seatInfo = payload?.seatId ? `Seat: ${payload.seatId}` : 'Seat: N/A';
+    const targetInfo = payload?.target ? `Target: ${payload.target}` : 'Target: N/A';
+    
+    const logLine = `[${timestamp}] [${modeText}] [${statusText}] Endpoint: ${endpoint} | ${rowInfo} | ${seatInfo} | ${targetInfo} | Duration: ${durationMs}ms | Msg: ${resultMessage}\n`;
+
+    fs.appendFileSync(logFilePath, logLine, 'utf8');
+    console.log(`[Server Log] Saved to server logs file: ${logFilePath}`);
+  } catch (error) {
+    console.error('Failed to write server-side log:', error);
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -65,6 +111,7 @@ async function startServer() {
     method = 'POST',
     customHeaders: Record<string, string> = {}
   ) {
+    const startTime = Date.now();
     const forceSimulate = reqBody.simulate === true || reqBody.simulate === 'true';
     const cleanBody = { ...reqBody };
     delete cleanBody.simulate; // remove simulator flag from actual payload
@@ -87,9 +134,14 @@ async function startServer() {
       // Simulate response immediately
       console.log(`[Simulator] Simulating response for ${endpoint}`);
       await new Promise((resolve) => setTimeout(resolve, 800)); // nice realistic delay
+      const duration = Date.now() - startTime;
+      const simMsg = `[Simulated] Action for ${endpoint} completed successfully.`;
+      
+      saveLogToServer(endpoint, cleanBody, true, simMsg, true, duration);
+
       return res.json({
         success: true,
-        message: `[Simulated] Action for ${endpoint} completed successfully.`,
+        message: simMsg,
         payload: cleanBody,
         isSimulated: true,
         command: curlCommand,
@@ -103,7 +155,6 @@ async function startServer() {
 
     try {
       console.log(`[SSH Proxy] Logging into ${host} as ${username} to run command: ${curlCommand}`);
-      const startTime = Date.now();
       const sshResult = await executeSSHCommand(curlCommand, host, username, password);
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -130,6 +181,9 @@ async function startServer() {
         isExecutionSuccessful = responseData.success;
       }
 
+      const outcomeMsg = responseData?.message || (isExecutionSuccessful ? 'Command successfully executed via SSH' : 'Command execution rejected by bus/cooldown');
+      saveLogToServer(endpoint, cleanBody, isExecutionSuccessful, outcomeMsg, false, duration);
+
       return res.json({
         success: isExecutionSuccessful,
         data: responseData,
@@ -140,8 +194,12 @@ async function startServer() {
         timestamp: new Date().toISOString(),
       });
     } catch (err: any) {
+      const duration = Date.now() - startTime;
       console.warn(`[SSH Proxy Error] SSH connection to ${username}@${host} failed: ${err.message || err}.`);
       
+      const errMsg = `SSH connection to ${host} failed: ${err.message || String(err)}`;
+      saveLogToServer(endpoint, cleanBody, false, errMsg, false, duration);
+
       return res.json({
         success: false,
         message: `SSH connection block to ${host} failed.`,
@@ -188,6 +246,48 @@ async function startServer() {
     await handleResetProxy('/full-reset', req.body, res, 'POST', {
       Accept: 'application/json',
     });
+  });
+
+  // 5. Server-side log list and download endpoints
+  app.get('/api/server-logs', (req, res) => {
+    try {
+      if (!fs.existsSync(logsDir)) {
+        return res.json({ logs: [] });
+      }
+      const files = fs.readdirSync(logsDir);
+      const logFiles = files
+        .filter(f => f.endsWith('.log'))
+        .map(f => {
+          const filePath = path.join(logsDir, f);
+          const stats = fs.statSync(filePath);
+          return {
+            filename: f,
+            size: stats.size,
+            mtime: stats.mtime,
+          };
+        })
+        .sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime()); // newest first
+
+      res.json({ logs: logFiles });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/server-logs/download/:filename', (req, res) => {
+    try {
+      const filename = req.params.filename;
+      if (filename.includes('..') || !filename.endsWith('.log')) {
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
+      const filePath = path.join(logsDir, filename);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+      res.download(filePath, filename);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Vite integration for bundling and development hot-reloading
